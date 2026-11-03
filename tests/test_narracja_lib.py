@@ -273,3 +273,17 @@ def test_transcribe_step_dedupes_subclips(L, env):
     assert c1.transcribed_calls + sub.transcribed_calls == 1 and c2.transcribed_calls == 1
     L.restore(rs, env["p"], env["w"])
     assert rs.page == "media" and env["p"].settings["transcriptionLanguage"] == "auto"
+
+
+def test_punctuation_only_words_dropped(L, env):
+    tr, _ = make_tr(["przewinęło się...", "... ponad 1200."])
+    env["c1"].tr = tr
+    L.inventory(env["p"], env["w"], "Wywiady")
+    L.export_units(env["p"], env["w"])
+    txt = L.units_text(env["w"], clip="C01")
+    assert "] ..." not in txt and "ponad 1200." in txt
+
+
+def test_plural(L):
+    assert [L.plural(n, "sekcja", "sekcje", "sekcji") for n in (1, 2, 3, 5, 12, 22, 25)] == \
+        ["sekcja", "sekcje", "sekcje", "sekcji", "sekcji", "sekcje", "sekcji"]

@@ -55,6 +55,15 @@ def fmt_s(sec):
     return ("%.1f s" % sec).replace(".", ",")
 
 
+def plural(n, one, few, many):
+    """Polska odmiana: 1 sekcja, 2-4 sekcje, 5+ sekcji (12-14 -> sekcji)."""
+    if n == 1:
+        return one
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return few
+    return many
+
+
 def fmt_mmss(sec):
     sec = int(round(sec))
     return "%d:%02d" % divmod(sec, 60)
@@ -282,7 +291,7 @@ def export_units(project, w, pause_s=1.5, max_s=20.0):
             first = True
             for wd in seg.get("words") or []:
                 t = (wd.get("text") or "").strip()
-                if not t or t == "(...)":
+                if not t or t == "(...)" or not re.search(r"\w", t):  # cisza albo sama interpunkcja ("...")
                     first = True
                     continue
                 s, e = tc2f(wd["start"], fps) - c0, tc2f(wd["end"], fps) - c0
@@ -429,7 +438,8 @@ def preview(w, plan, pre_s=0.3, post_s=0.4, gap_s=0.0):
                                                        fmt_s((g["e"] - g["s"]) / g["fps"]), g["text"]))
         total += st + (gap_s if i < len(sections) - 1 else 0)
     lines.append("")
-    lines.append("Razem: %s (%s), %d wypowiedzi, %d sekcji" % (fmt_mmss(total), fmt_s(total), n, len(sections)))
+    lines.append("Razem: %s (%s), %d %s, %d %s" % (fmt_mmss(total), fmt_s(total), n, plural(n, "wypowiedź", "wypowiedzi", "wypowiedzi"),
+                                                 len(sections), plural(len(sections), "sekcja", "sekcje", "sekcji")))
     _dump(w, "plan.json", plan)
     return dict(text="\n".join(lines), total_s=round(total, 2), items=n, errors=[])
 

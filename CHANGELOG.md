@@ -1,6 +1,18 @@
 # Zmiany
 
-Format tagów: `<skill>-v<wersja>`, np. `napisy-v3.1`. Sekcja o nazwie tagu trafia do opisu wydania na GitHubie.
+Format tagów: `<prefiks>-v<wersja>`, np. `napisy-v3.1` albo `narracja-v1.0` (prefiksy w `tools/release.json`). Sekcja o nazwie tagu trafia do opisu wydania na GitHubie.
+
+## narracja-v1.0
+
+Pierwsze wydanie skilla **fzp-szybka-narracja**: gotowa narracja z wypowiedzi (A-roll) według briefu.
+
+- Brief i założenia na wejściu; pytania tylko o brakujące rzeczy (bin, długość, cel).
+- Transkrypcja brakujących klipów z czekaniem na status Resolve; plik współdzielony przez subclipy transkrybowany raz, jednostki przycinane do In/Out klipu.
+- Narracja tekstowa do akceptacji: sekcje, cytaty z mówcą, klipem, timecode'em i czasem, suma liczona z klatek, braki względem briefu.
+- Po akceptacji nowy timeline o nazwie podanej przez użytkownika: cięcia na granicach słów, zapasy 0,3/0,4 s bez wchodzenia na sąsiednie słowa, łączenie kolejnych fragmentów jednego klipu, markery sekcji, kontrola dziur, nakładek i długości.
+- Poprawki zawsze jako nowa wersja timeline'u.
+
+Przetestowane w Resolve 21.1.2 na subclipach z jednego nagrania (4 osoby, 25 fps): 6 fragmentów, 41,6 s, bez dziur i nakładek.
 
 ## napisy-v3.1.1
 

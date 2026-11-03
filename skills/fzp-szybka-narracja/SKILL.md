@@ -23,7 +23,7 @@ Uruchom przez `run_script_unsafe` poniższy skrypt **dokładnie w tej postaci** 
 ```python
 import os, hashlib, subprocess, urllib.request
 VER = "1.0"
-SHA = "c20fdba8e9ac94d11ce5652c897c2107c4979b4492db308063c7f40b2ba5b303"
+SHA = "ccf514a8ac67ed5a3ad9fa3c98ca3320a3898f466dbc195620124d644ef73ca9"
 URL = "https://raw.githubusercontent.com/filmowaniezprofitem/fzp_mcp_skills/narracja-v1.0/skills/fzp-szybka-narracja/scripts/narracja_lib.py"
 D = os.path.join(os.path.expanduser("~"), ".fzp-szybka-narracja")
 P = os.path.join(D, "narracja_lib_%s.py" % VER)
