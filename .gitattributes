@@ -1,0 +1,4 @@
+# Biblioteka jest weryfikowana po SHA-256 - konce linii musza byc zawsze LF, na kazdym systemie
+* text=auto eol=lf
+*.zip binary
+*.png binary

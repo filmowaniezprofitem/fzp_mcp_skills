@@ -1,0 +1,10 @@
+{
+  "owner": "filmowaniezprofitem",
+  "repo": "fzp_mcp_skills",
+  "skills": {
+    "fzp-napisy-z-timeline": {
+      "lib": "scripts/napisy_lib.py",
+      "tag_prefix": "napisy-v"
+    }
+  }
+}

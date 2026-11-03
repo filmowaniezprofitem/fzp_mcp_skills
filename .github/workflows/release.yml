@@ -1,0 +1,44 @@
+name: Release
+
+# Wydanie skilla: wypchnij tag w formacie <tag_prefix><LIB_VERSION>, np. napisy-v3.1
+on:
+  push:
+    tags: ["napisy-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - run: python -m pytest -q tests
+      - name: Sprawdz SKILL.md i zgodnosc tagu z wersja biblioteki
+        run: |
+          python tools/build.py --check --tag | tee build.log
+          grep -q "TAG fzp-napisy-z-timeline ${GITHUB_REF_NAME}$" build.log || {
+            echo "Tag ${GITHUB_REF_NAME} nie zgadza sie z LIB_VERSION w bibliotece"; exit 1; }
+      - name: Plik pod adresem z SKILL.md ma oczekiwany hash
+        run: |
+          URL=$(grep -oP '^URL = "\K[^"]+' skills/fzp-napisy-z-timeline/SKILL.md)
+          SHA=$(grep -oP '^SHA = "\K[^"]+' skills/fzp-napisy-z-timeline/SKILL.md)
+          for i in 1 2 3 4 5; do
+            GOT=$(curl -fsSL "$URL" | sha256sum | cut -d' ' -f1) && [ "$GOT" = "$SHA" ] && break
+            sleep 10
+          done
+          echo "oczekiwany $SHA"; echo "pobrany    $GOT"
+          [ "$GOT" = "$SHA" ]
+      - name: Zbuduj paczke skilla
+        run: python tools/build.py --zip
+      - name: Utworz wydanie
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES=$(awk "/^## ${GITHUB_REF_NAME}/{f=1;next} /^## /{f=0} f" CHANGELOG.md)
+          gh release create "$GITHUB_REF_NAME" dist/fzp-napisy-z-timeline.zip \
+            --title "Napisy z timeline'u ${GITHUB_REF_NAME#napisy-v}" --notes "${NOTES:-Zob. CHANGELOG.md}"
