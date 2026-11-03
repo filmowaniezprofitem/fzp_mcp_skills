@@ -21,6 +21,16 @@
         "print(json.dumps(dict(env=check_env(resolve), project=project.GetName(), bins=list_bins(project),",
         "                      W=new_workdir(project)), ensure_ascii=False))"
       ]
+    },
+    "fzp-katalog-wypowiedzi": {
+      "lib": "scripts/katalog_lib.py",
+      "tag_prefix": "katalog-v",
+      "install_dir": ".fzp-katalog-wypowiedzi",
+      "post_comment": "od razu srodowisko, biny i folder roboczy (Krok 0)",
+      "post": [
+        "print(json.dumps(dict(env=check_env(resolve), project=project.GetName(), bins=list_bins(project),",
+        "                      W=new_workdir(project)), ensure_ascii=False))"
+      ]
     }
   }
 }
