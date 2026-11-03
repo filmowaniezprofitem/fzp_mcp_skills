@@ -19,9 +19,11 @@ Claude renderuje ścieżki dialogowe do WAV, uruchamia transkrypcję w Resolve, 
 
 ### Instalacja
 
-1. Pobierz `fzp-napisy-z-timeline.zip` z najnowszego wydania: [Releases](../../releases/latest).
-2. Wgraj ZIP jako skill w ustawieniach Claude (sekcja skilli).
-3. Gotowe. Przy pierwszym użyciu skill sam pobierze bibliotekę do `~/.napisy-z-timeline/` i sprawdzi jej sumę SHA-256.
+1. Pobierz `fzp-napisy-z-timeline.zip` z najnowszego wydania: [Releases](../../releases/latest), sekcja **Assets**.
+   **Nie** pobieraj „Source code (zip)”, bo to archiwum całego repozytorium i Claude go nie przyjmie. Pliku nie rozpakowuj.
+2. W Claude otwórz [Customize > Skills](https://claude.ai/customize/skills) (nie sekcję pluginów) i wgraj ZIP jako własny skill.
+3. Włącz skill przełącznikiem. Jeśli masz starszą wersję, najpierw ją wyłącz albo usuń, żeby nie mieć dwóch skilli o tej samej nazwie.
+4. Gotowe. Przy pierwszym użyciu skill sam pobierze bibliotekę do `~/.napisy-z-timeline/` i sprawdzi jej sumę SHA-256.
 
 ### Użycie
 
