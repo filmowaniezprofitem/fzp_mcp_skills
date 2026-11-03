@@ -1,10 +1,10 @@
 name: Release
 
-# Wydanie skilla: tag w formacie <tag_prefix><LIB_VERSION>, np. napisy-v3.1.
-# Dziala zarowno po wypchnieciu tagu, jak i po opublikowaniu wydania w interfejsie GitHuba.
+# Wydanie jednego skilla: tag w formacie <tag_prefix><LIB_VERSION> z tools/release.json,
+# np. napisy-v3.1.1 albo narracja-v1.0. Dziala po wypchnieciu tagu i po opublikowaniu wydania w interfejsie GitHuba.
 on:
   push:
-    tags: ["napisy-v*"]
+    tags: ["*-v*"]
   release:
     types: [published]
 
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   release:
-    if: startsWith(github.ref_name, 'napisy-v')
+    if: contains(github.ref_name, '-v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,34 +26,31 @@ jobs:
           python-version: "3.12"
       - run: pip install pytest
       - run: python -m pytest -q tests
-      - name: Sprawdz SKILL.md i zgodnosc tagu z wersja biblioteki
-        run: |
-          python tools/build.py --check --tag | tee build.log
-          grep -q "TAG fzp-napisy-z-timeline ${GITHUB_REF_NAME}$" build.log || {
-            echo "Tag ${GITHUB_REF_NAME} nie zgadza sie z LIB_VERSION w bibliotece"; exit 1; }
+      - name: Dopasuj tag do skilla, sprawdz SKILL.md, zbuduj paczke
+        id: build
+        run: python tools/build.py --release "${GITHUB_REF_NAME}"
       - name: Plik pod adresem z SKILL.md ma oczekiwany hash
         run: |
-          URL=$(grep -oP '^URL = "\K[^"]+' skills/fzp-napisy-z-timeline/SKILL.md)
-          SHA=$(grep -oP '^SHA = "\K[^"]+' skills/fzp-napisy-z-timeline/SKILL.md)
+          URL="${{ steps.build.outputs.url }}"; SHA="${{ steps.build.outputs.sha }}"
           for i in 1 2 3 4 5; do
             GOT=$(curl -fsSL "$URL" | sha256sum | cut -d' ' -f1) && [ "$GOT" = "$SHA" ] && break
             sleep 10
           done
           echo "oczekiwany $SHA"; echo "pobrany    $GOT"
           [ "$GOT" = "$SHA" ]
-      - name: Zbuduj paczke skilla
-        run: python tools/build.py --zip
       - name: Utworz wydanie
         env:
           GH_TOKEN: ${{ github.token }}
+          SKILL: ${{ steps.build.outputs.skill }}
+          ZIP: ${{ steps.build.outputs.zip }}
+          VER: ${{ steps.build.outputs.ver }}
         run: |
-          NOTES=$(awk "/^## ${GITHUB_REF_NAME}/{f=1;next} /^## /{f=0} f" CHANGELOG.md)
-          TITLE="Napisy z timeline'u ${GITHUB_REF_NAME#napisy-v}"
+          NOTES=$(awk "/^## ${GITHUB_REF_NAME}\$/{f=1;next} /^## /{f=0} f" CHANGELOG.md)
+          TITLE="${SKILL} ${VER}"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             # wydanie utworzone recznie w interfejsie GitHuba - dolacz paczke i opis z CHANGELOG
-            gh release upload "$GITHUB_REF_NAME" dist/fzp-napisy-z-timeline.zip --clobber
+            gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
             gh release edit "$GITHUB_REF_NAME" --title "$TITLE" --notes "${NOTES:-Zob. CHANGELOG.md}"
           else
-            gh release create "$GITHUB_REF_NAME" dist/fzp-napisy-z-timeline.zip \
-              --title "$TITLE" --notes "${NOTES:-Zob. CHANGELOG.md}"
+            gh release create "$GITHUB_REF_NAME" "$ZIP" --title "$TITLE" --notes "${NOTES:-Zob. CHANGELOG.md}"
           fi

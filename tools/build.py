@@ -25,8 +25,8 @@ import os, hashlib, subprocess, urllib.request
 VER = "{ver}"
 SHA = "{sha}"
 URL = "{url}"
-D = os.path.join(os.path.expanduser("~"), ".napisy-z-timeline")
-P = os.path.join(D, "napisy_lib_%s.py" % VER)
+D = os.path.join(os.path.expanduser("~"), "{install_dir}")
+P = os.path.join(D, "{lib_stem}_%s.py" % VER)
 h = lambda b: hashlib.sha256(b).hexdigest()
 ok = os.path.exists(P) and h(open(P, "rb").read()) == SHA
 if ok:
@@ -50,16 +50,15 @@ else:
         open(P, "wb").write(b)
         print("LIB_OK pobrana", P)
         ok = True
-if ok:  # od razu srodowisko i inwentarz (Krok 0b)
+if ok:  # {post_comment}
     exec(open(P, encoding="utf-8").read(), globals())
-    print(json.dumps(dict(env=check_env(resolve), inv=inventory(project), abandoned=find_abandoned(project),
-                          folder=default_folder(project.GetCurrentTimeline().GetName())), ensure_ascii=False))
+{post}
 ```
 
 Nagłówek każdego kolejnego skryptu (`run_script_unsafe`):
 ```python
 import os
-exec(open(os.path.join(os.path.expanduser("~"), ".napisy-z-timeline", "napisy_lib_{ver}.py"), encoding="utf-8").read(), globals())
+exec(open(os.path.join(os.path.expanduser("~"), "{install_dir}", "{lib_stem}_{ver}.py"), encoding="utf-8").read(), globals())
 W = "<folder roboczy>"
 ```'''
 
@@ -75,7 +74,9 @@ def lib_info(skill, spec):
     ver = m.group(1).decode()
     tag = spec["tag_prefix"] + ver
     url = "https://raw.githubusercontent.com/%s/%s/%s/skills/%s/%s" % (CFG["owner"], CFG["repo"], tag, skill, spec["lib"])
-    return dict(ver=ver, sha=hashlib.sha256(data).hexdigest(), url=url, tag=tag)
+    return dict(ver=ver, sha=hashlib.sha256(data).hexdigest(), url=url, tag=tag, install_dir=spec["install_dir"],
+                lib_stem=os.path.splitext(os.path.basename(spec["lib"]))[0], post_comment=spec["post_comment"],
+                post="\n".join("    " + l for l in spec["post"]))
 
 
 def render_block(info):
@@ -123,12 +124,26 @@ def make_zip(skill):
 
 def main(argv):
     check, zip_, tag = "--check" in argv, "--zip" in argv, "--tag" in argv
+    release = argv[argv.index("--release") + 1] if "--release" in argv else None
+    matched = []
     for skill, spec in CFG["skills"].items():
-        info = update(skill, spec, check)
+        info = update(skill, spec, check or bool(release))
         if tag:
             print("TAG", skill, info["tag"])
         if zip_:
             make_zip(skill)
+        if release and info["tag"] == release:
+            matched.append((skill, info))
+    if release:
+        # wydanie jednego skilla: tag musi odpowiadac LIB_VERSION dokladnie jednego skilla
+        if len(matched) != 1:
+            sys.exit("BLAD: tag %s nie odpowiada wersji biblioteki zadnego skilla (zob. --tag)" % release)
+        skill, info = matched[0]
+        out = make_zip(skill)
+        gh = os.environ.get("GITHUB_OUTPUT")
+        if gh:
+            with open(gh, "a") as f:
+                f.write("skill=%s\nzip=%s\nurl=%s\nsha=%s\nver=%s\n" % (skill, out, info["url"], info["sha"], info["ver"]))
 
 
 if __name__ == "__main__":

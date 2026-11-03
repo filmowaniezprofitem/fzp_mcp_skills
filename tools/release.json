@@ -4,7 +4,23 @@
   "skills": {
     "fzp-napisy-z-timeline": {
       "lib": "scripts/napisy_lib.py",
-      "tag_prefix": "napisy-v"
+      "tag_prefix": "napisy-v",
+      "install_dir": ".napisy-z-timeline",
+      "post_comment": "od razu srodowisko i inwentarz (Krok 0b)",
+      "post": [
+        "print(json.dumps(dict(env=check_env(resolve), inv=inventory(project), abandoned=find_abandoned(project),",
+        "                      folder=default_folder(project.GetCurrentTimeline().GetName())), ensure_ascii=False))"
+      ]
+    },
+    "fzp-szybka-narracja": {
+      "lib": "scripts/narracja_lib.py",
+      "tag_prefix": "narracja-v",
+      "install_dir": ".fzp-szybka-narracja",
+      "post_comment": "od razu srodowisko, biny i folder roboczy (Krok 0b)",
+      "post": [
+        "print(json.dumps(dict(env=check_env(resolve), project=project.GetName(), bins=list_bins(project),",
+        "                      W=new_workdir(project)), ensure_ascii=False))"
+      ]
     }
   }
 }
