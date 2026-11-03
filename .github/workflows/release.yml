@@ -1,15 +1,23 @@
 name: Release
 
-# Wydanie skilla: wypchnij tag w formacie <tag_prefix><LIB_VERSION>, np. napisy-v3.1
+# Wydanie skilla: tag w formacie <tag_prefix><LIB_VERSION>, np. napisy-v3.1.
+# Dziala zarowno po wypchnieciu tagu, jak i po opublikowaniu wydania w interfejsie GitHuba.
 on:
   push:
     tags: ["napisy-v*"]
+  release:
+    types: [published]
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   release:
+    if: startsWith(github.ref_name, 'napisy-v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,5 +48,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           NOTES=$(awk "/^## ${GITHUB_REF_NAME}/{f=1;next} /^## /{f=0} f" CHANGELOG.md)
-          gh release create "$GITHUB_REF_NAME" dist/fzp-napisy-z-timeline.zip \
-            --title "Napisy z timeline'u ${GITHUB_REF_NAME#napisy-v}" --notes "${NOTES:-Zob. CHANGELOG.md}"
+          TITLE="Napisy z timeline'u ${GITHUB_REF_NAME#napisy-v}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # wydanie utworzone recznie w interfejsie GitHuba - dolacz paczke i opis z CHANGELOG
+            gh release upload "$GITHUB_REF_NAME" dist/fzp-napisy-z-timeline.zip --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "$TITLE" --notes "${NOTES:-Zob. CHANGELOG.md}"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/fzp-napisy-z-timeline.zip \
+              --title "$TITLE" --notes "${NOTES:-Zob. CHANGELOG.md}"
+          fi
