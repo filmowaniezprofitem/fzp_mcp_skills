@@ -4,7 +4,7 @@ Zestaw skilli do pracy z MCP DaVinci Resolve z użyciem Claude. Przygotowane prz
 
 | Skill | Co robi | Wersja |
 |---|---|---|
-| [fzp-napisy-z-timeline](skills/fzp-napisy-z-timeline/SKILL.md) | Polskie napisy SRT z dialogów bieżącego timeline'u: transkrypcja w Resolve, czasy z pojedynczych słów, polskie zasady łamania wierszy, korekty do akceptacji, wstawienie po timecodzie | 3.1 |
+| [fzp-napisy-z-timeline](skills/fzp-napisy-z-timeline/SKILL.md) | Polskie napisy SRT z dialogów bieżącego timeline'u: transkrypcja w Resolve, czasy z pojedynczych słów, polskie zasady łamania wierszy, korekty do akceptacji, wstawienie po timecodzie | 3.1.1 |
 
 ## fzp-napisy-z-timeline
 
@@ -56,7 +56,7 @@ Transkrypcja odbywa się lokalnie w DaVinci Resolve. Do Claude trafia tekst dial
 
 ### Instalacja biblioteki bez internetu
 
-Jeśli komputer z Resolve nie ma dostępu do sieci, skopiuj [`napisy_lib.py`](skills/fzp-napisy-z-timeline/scripts/napisy_lib.py) z wydania jako `~/.napisy-z-timeline/napisy_lib_3.1.py` (na Windows: `C:\Users\<nazwa>\.napisy-z-timeline\napisy_lib_3.1.py`). Plik musi być identyczny bajt w bajt, nie otwieraj go w edytorze, który zmienia końce linii.
+Jeśli komputer z Resolve nie ma dostępu do sieci, skopiuj [`napisy_lib.py`](skills/fzp-napisy-z-timeline/scripts/napisy_lib.py) z wydania jako `~/.napisy-z-timeline/napisy_lib_3.1.1.py` (na Windows: `C:\Users\<nazwa>\.napisy-z-timeline\napisy_lib_3.1.1.py`). Plik musi być identyczny bajt w bajt, nie otwieraj go w edytorze, który zmienia końce linii.
 
 ### Zgłaszanie problemów
 

@@ -28,7 +28,8 @@ URL = "{url}"
 D = os.path.join(os.path.expanduser("~"), ".napisy-z-timeline")
 P = os.path.join(D, "napisy_lib_%s.py" % VER)
 h = lambda b: hashlib.sha256(b).hexdigest()
-if os.path.exists(P) and h(open(P, "rb").read()) == SHA:
+ok = os.path.exists(P) and h(open(P, "rb").read()) == SHA
+if ok:
     print("LIB_OK zainstalowana", P)
 else:
     b, err = None, []
@@ -48,6 +49,11 @@ else:
         os.makedirs(D, exist_ok=True)
         open(P, "wb").write(b)
         print("LIB_OK pobrana", P)
+        ok = True
+if ok:  # od razu srodowisko i inwentarz (Krok 0b)
+    exec(open(P, encoding="utf-8").read(), globals())
+    print(json.dumps(dict(env=check_env(resolve), inv=inventory(project), abandoned=find_abandoned(project),
+                          folder=default_folder(project.GetCurrentTimeline().GetName())), ensure_ascii=False))
 ```
 
 Nagłówek każdego kolejnego skryptu (`run_script_unsafe`):

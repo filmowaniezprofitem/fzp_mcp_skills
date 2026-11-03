@@ -3,7 +3,7 @@
 # Licencja: MIT + Commons Clause (zob. LICENSE w repozytorium fzp_mcp_skills)
 import json, os, re, sys, time
 
-LIB_VERSION = "3.1"
+LIB_VERSION = "3.1.1"
 MIN_RESOLVE = (21, 1)
 BACKUP_PRESET = "_napisy_backup"
 TC_DF = False  # drop-frame do wyswietlania timecode'ow; ustawiane z inventory w prepare()/build()
@@ -880,7 +880,7 @@ def build(workdir, plan, profile="montazowy", max_chars=None, max_lines=None, me
             groups.setdefault(u[0]["sp"], []).append(u)
     else:
         groups = {"": uw}
-    res = dict(files=[], delivery=[], preview=[], warnings=[], counts={})
+    res = dict(files=[], delivery=[], preview=[], warnings=[], warnings_soft=[], counts={})
     for sp, gu in groups.items():
         subs, warn = build_subs(gu, cuts, fps, P, M, L, inv["end_frame"], merge)
         warn += validate(subs, sum(len(u) for u in gu), cuts, fps, P, M, L)
@@ -897,7 +897,9 @@ def build(workdir, plan, profile="montazowy", max_chars=None, max_lines=None, me
             open(dpath, "w", encoding="utf-8", newline="\n").write(srt_text(subs, fps, inv["start_frame"]))
             res["delivery"].append(dpath)
         res["counts"][sp or "all"] = len(subs)
-        res["warnings"] += warn
+        for x in warn:  # 15-17 zn/s to normalne tempo mowy: osobna lista, w raporcie tylko liczba
+            m = re.search(r"szybki napis ([\d.]+) zn/s", x)
+            (res["warnings_soft"] if m and float(m.group(1)) <= P["cps"] else res["warnings"]).append(x)
         res["preview"] += ["%s-%s %s" % (f2tc(s["st"], fps), f2tc(s["en"], fps), " / ".join(s["lines"])) for s in subs]
         json.dump([dict(st=s["st"], en=s["en"], lines=s["lines"]) for s in subs],
                   open(path[:-4] + ".json", "w", encoding="utf-8"), ensure_ascii=False)

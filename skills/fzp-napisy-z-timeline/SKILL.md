@@ -3,7 +3,7 @@ name: "fzp-napisy-z-timeline"
 description: "Robi polskie napisy SRT z dialogów bieżącego timeline'u DaVinci Resolve Studio przez MCP: transkrypcja w Resolve, czasy z pojedynczych słów, polskie zasady podziału i łamania, korekty do akceptacji, wstawienie po timecodzie. Użyj, gdy ktoś prosi o napisy, transkrypcję albo plik SRT do materiału z Resolve."
 ---
 
-# Napisy z timeline'u DaVinci Resolve (wersja 3.1)
+# Napisy z timeline'u DaVinci Resolve (wersja 3.1.1)
 
 Autor: Filmowanie z Profitem (filmowaniezprofitem.pl). Licencja: MIT + Commons Clause.
 
@@ -23,19 +23,20 @@ Wymagania: DaVinci Resolve Studio 21.1+ z włączonym MCP (File > Setup AI Assis
 
 ## Krok 0 – biblioteka, środowisko, inwentarz (bez pytań)
 
-### 0a. Instalacja biblioteki
-Biblioteka leży na komputerze użytkownika w `~/.napisy-z-timeline/`. Uruchom przez `run_script_unsafe` poniższy skrypt **dokładnie w tej postaci** (wartości uzupełnia skrypt wydania repozytorium, nie zmieniaj ich):
+### 0a. Instalacja biblioteki, środowisko i inwentarz – jeden skrypt
+Biblioteka leży na komputerze użytkownika w `~/.napisy-z-timeline/`. Uruchom przez `run_script_unsafe` poniższy skrypt **dokładnie w tej postaci** (wartości uzupełnia skrypt wydania repozytorium, nie zmieniaj ich). Po `LIB_OK` ten sam skrypt wypisuje JSON ze środowiskiem i inwentarzem (opis w 0b):
 
 <!-- LIB:BEGIN (generowane przez tools/build.py - nie edytuj recznie) -->
 ```python
 import os, hashlib, subprocess, urllib.request
-VER = "3.1"
-SHA = "b91973a43ea919f29fb83b303ff770019023fd8aaffa3337b084ec6aa3621f0f"
-URL = "https://raw.githubusercontent.com/filmowaniezprofitem/fzp_mcp_skills/napisy-v3.1/skills/fzp-napisy-z-timeline/scripts/napisy_lib.py"
+VER = "3.1.1"
+SHA = "8841c03a78b15b9e8c38a2ea72bfea1465fcfd90490a43e568f4f3b4ce115ecd"
+URL = "https://raw.githubusercontent.com/filmowaniezprofitem/fzp_mcp_skills/napisy-v3.1.1/skills/fzp-napisy-z-timeline/scripts/napisy_lib.py"
 D = os.path.join(os.path.expanduser("~"), ".napisy-z-timeline")
 P = os.path.join(D, "napisy_lib_%s.py" % VER)
 h = lambda b: hashlib.sha256(b).hexdigest()
-if os.path.exists(P) and h(open(P, "rb").read()) == SHA:
+ok = os.path.exists(P) and h(open(P, "rb").read()) == SHA
+if ok:
     print("LIB_OK zainstalowana", P)
 else:
     b, err = None, []
@@ -55,28 +56,30 @@ else:
         os.makedirs(D, exist_ok=True)
         open(P, "wb").write(b)
         print("LIB_OK pobrana", P)
+        ok = True
+if ok:  # od razu srodowisko i inwentarz (Krok 0b)
+    exec(open(P, encoding="utf-8").read(), globals())
+    print(json.dumps(dict(env=check_env(resolve), inv=inventory(project), abandoned=find_abandoned(project),
+                          folder=default_folder(project.GetCurrentTimeline().GetName())), ensure_ascii=False))
 ```
 
 Nagłówek każdego kolejnego skryptu (`run_script_unsafe`):
 ```python
 import os
-exec(open(os.path.join(os.path.expanduser("~"), ".napisy-z-timeline", "napisy_lib_3.1.py"), encoding="utf-8").read(), globals())
+exec(open(os.path.join(os.path.expanduser("~"), ".napisy-z-timeline", "napisy_lib_3.1.1.py"), encoding="utf-8").read(), globals())
 W = "<folder roboczy>"
 ```
 <!-- LIB:END -->
 
 Wynik:
-- `LIB_OK` – idziesz dalej.
+- `LIB_OK` + JSON – idziesz do 0b.
 - `LIB_BLAD_POBRANIA` (brak internetu na komputerze z Resolve) – fallback: przeczytaj `scripts/napisy_lib.py` z folderu tego skilla i zapisz go przez `run_script_unsafe` w ścieżce `P` poleceniem `open(P, "w", encoding="utf-8", newline="\n").write(r'''<cały plik>''')`. Przepisz kod dokładnie, bez zmian. Potem uruchom skrypt instalacyjny jeszcze raz. Jeśli zgłosi `LIB_ZLY_HASH`, usuń plik `P`, nie próbuj poprawiać i powiedz użytkownikowi, że trzeba zainstalować bibliotekę ręcznie (instrukcja w README repozytorium).
 - `LIB_ZLY_HASH` po pobraniu – zatrzymaj się i zgłoś. Nie uruchamiaj pliku, którego hash się nie zgadza.
 
 `resolve` i `project` to obiekty, które środowisko `run_script` udostępnia skryptom. Funkcje biblioteki dostają je jako argumenty.
 
-### 0b. Środowisko i inwentarz – jeden skrypt
-```python
-print(json.dumps(dict(env=check_env(resolve), inv=inventory(project), abandoned=find_abandoned(project),
-                      folder=default_folder(project.GetCurrentTimeline().GetName())), ensure_ascii=False))
-```
+### 0b. Wynik środowiska i inwentarza
+JSON z 0a: `env`, `inv`, `abandoned`, `folder`. Po instalacji awaryjnej (fallback) uruchom skrypt z 0a jeszcze raz, żeby go dostać.
 - `env.ok == False` → podaj `env.reason` i zakończ.
 - `abandoned.preset == True` albo niepuste `abandoned.workdirs` → poprzedni przebieg nie posprzątał po sobie. Zapytaj jednym pytaniem: **„Przywrócić ustawienia sprzed poprzedniego przebiegu?”** (Recommended) albo „Obecne ustawienia renderu są poprawne”. Przy pierwszej opcji `restore(resolve, project, abandoned["workdirs"][0])`, a jeśli nie ma folderu, tylko `project.LoadRenderPreset("_napisy_backup")` i `project.DeleteRenderPreset("_napisy_backup")`. Przy drugiej w Kroku 2 użyj `snapshot(..., force=True)`.
 
@@ -135,8 +138,11 @@ Plan (biblioteka zapisuje go w `W/plan.json` przy `build`):
 2. Dla każdego pliku z `r["files"]` wywołaj `import_srt(project, plik)`. Klip trafia do binu „Napisy” i zostaje zaznaczony, a playhead staje na początku timeline'u.
 3. Pokaż użytkownikowi:
    - podgląd (`r["preview"]`; przy dużej liczbie pierwsze 20 napisów),
-   - wszystkie `r["warnings"]`, krótko pogrupowane,
+   - `r["warnings"]` (ważne: szybkość powyżej 17 zn/s, łamanie, cięcia, czasy), krótko pogrupowane, z timecode'ami,
+   - `r["warnings_soft"]` (15–17 zn/s, normalne tempo mowy) tylko jako liczba, np. „+ 6 napisów 15–17 zn/s”. Nie wymieniaj ich, chyba że użytkownik zapyta,
    - ścieżki plików.
+
+   Liczby i timecode'y w raporcie bierzesz z wyniku `build` (`len(...)`), nie liczysz ich sam z podglądu.
 
 Pliki:
 - `files`: SRT do wstawienia w Resolve. Czasy są bezwzględnym timecode'em timeline'u, bo tak czyta je „Insert … Using Timecode”.
@@ -163,7 +169,7 @@ Potem `import_srt`, prośba o usunięcie poprzedniej ścieżki napisów i wstawi
 ## Raport końcowy (krótko)
 - pliki SRT (do Resolve i dla klienta), ścieżka napisów,
 - profil, znaki × wiersze, liczba napisów, liczba korekt (przyjęte do decyzji + drobne automatyczne),
-- ostrzeżenia z timecode'ami,
+- ważne ostrzeżenia z timecode'ami, miękkie (15–17 zn/s) tylko liczbą,
 - nic o krokach, które przeszły bez problemu.
 
 ## Funkcje biblioteki (ściąga)

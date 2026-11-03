@@ -2,6 +2,13 @@
 
 Format tagów: `<skill>-v<wersja>`, np. `napisy-v3.1`. Sekcja o nazwie tagu trafia do opisu wydania na GitHubie.
 
+## napisy-v3.1.1
+
+Poprawki po pierwszym teście na materiale produkcyjnym.
+
+- Ostrzeżenia o szybkości 15–17 zn/s (normalne tempo mowy) trafiają do osobnej listy `warnings_soft` i w raporcie pojawiają się tylko jako liczba. Indywidualnie pokazywane są napisy powyżej 17 zn/s i pozostałe problemy (łamanie, cięcia, czasy). Liczby w raporcie pochodzą z wyniku `build`, a nie z liczenia przez model.
+- Instalacja biblioteki, sprawdzenie środowiska i inwentarz timeline'u w jednym skrypcie: o jedno wywołanie mniej na starcie.
+
 ## napisy-v3.1
 
 Pierwsze publiczne wydanie skilla **fzp-napisy-z-timeline**.

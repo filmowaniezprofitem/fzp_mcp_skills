@@ -201,6 +201,18 @@ def test_build_per_speaker(tmp_path, L):
     assert len(r["files"]) == 2 and set(r["counts"]) == {"S1", "S2"}
 
 
+def test_soft_speed_warnings_separated(tmp_path, L):
+    w, words = make_workdir(tmp_path, L)
+    for x in words:  # szybka mowa: skracamy czasy slow
+        x["e"] = x["s"] + max(1, (x["e"] - x["s"]) // 2)
+    L._dump(w, "words.json", words)
+    L.prepare(w)
+    r = L.build(w, {}, "netflix")
+    cps = lambda x: float(re.search(r"([\d.]+) zn/s", x).group(1))
+    assert all(15 < cps(x) <= 17 for x in r["warnings_soft"])
+    assert all(cps(x) > 17 for x in r["warnings"] if "szybki napis" in x)
+
+
 # ------------------------------------------------------------------ atrapy API Resolve
 class FakeResolve:
     def __init__(self, v, prod="DaVinci Resolve Studio"):
