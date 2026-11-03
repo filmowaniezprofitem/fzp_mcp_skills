@@ -4,6 +4,7 @@ Zestaw skilli do pracy z MCP DaVinci Resolve z użyciem Claude. Przygotowane prz
 
 | Skill | Co robi | Wersja | Tag wydania |
 |---|---|---|---|
+| [fzp-katalog-wypowiedzi](skills/fzp-katalog-wypowiedzi/SKILL.md) | Katalog wypowiedzi dla reżysera, producenta albo klienta: metadane osób i tematów, markery z ID na cytatach, dokument DOCX do pracy offline; z odesłanego dokumentu nowy timeline w wybranej kolejności | 1.0 | `katalog-v…` |
 | [fzp-szybka-narracja](skills/fzp-szybka-narracja/SKILL.md) | Gotowa narracja z wypowiedzi według briefu: transkrypcja binu, propozycja tekstowa z czasami i brakami, po akceptacji nowy timeline cięty na granicach słów | 1.0 | `narracja-v…` |
 | [fzp-napisy-z-timeline](skills/fzp-napisy-z-timeline/SKILL.md) | Polskie napisy SRT z dialogów bieżącego timeline'u: transkrypcja w Resolve, czasy z pojedynczych słów, polskie zasady łamania wierszy, korekty do akceptacji, wstawienie po timecodzie | 3.1.1 | `napisy-v…` |
 
@@ -21,6 +22,32 @@ Zestaw skilli do pracy z MCP DaVinci Resolve z użyciem Claude. Przygotowane prz
 2. W Claude otwórz [Customize > Skills](https://claude.ai/customize/skills) (nie sekcję pluginów) i wgraj ZIP jako własny skill.
 3. Włącz skill przełącznikiem. Jeśli masz starszą wersję, najpierw ją wyłącz albo usuń, żeby nie mieć dwóch skilli o tej samej nazwie.
 4. Gotowe. Przy pierwszym użyciu skill sam pobierze swoją bibliotekę do folderu w katalogu domowym i sprawdzi jej sumę SHA-256.
+
+---
+
+## fzp-katalog-wypowiedzi
+
+Przegląd nagranych wypowiedzi dla kogoś, kto decyduje o kształcie filmu, ale nie siedzi w programie. Skill transkrybuje bin z wywiadami i przygotowuje trzy rzeczy:
+
+- **dokument DOCX** (A4 w poziomie, na Pulpicie): kto wystąpił, tematy i kto o nich mówi, braki względem briefu, możliwe osie opowieści, rzeczy do sprawdzenia, a pod spodem tabele wybranych cytatów pogrupowane po tematach oraz aneks z pełnym zapisem każdego zdania,
+- **metadane klipów** w Resolve: `Keywords` z `osoba:` i `temat:` (do Smart Binów i eksportu CSV), `Description` z rolą i streszczeniem (tylko gdy pole jest puste),
+- **markery z ID** na klipach źródłowych przy każdym wybranym cytacie; idą za klipem do każdego timeline'u.
+
+Opcjonalnie uruchamia IntelliSearch z rozpoznawaniem twarzy na binie, żeby wyszukiwarka i kolumna People były gotowe.
+
+### Praca z dokumentem (dla osoby decydującej)
+
+1. W żółtej kolumnie **„Kol.”** wpisz numery w kolejności, w jakiej wypowiedzi mają pójść w filmie (1, 2, 3…; wstawka: 2.5). Można wybierać z cytatów i z aneksu.
+2. W **„Uwagach”** dopisz, co zmienić („tylko pierwsze zdanie”, „bez końcówki”). Można też skreślić słowa w cytacie.
+3. Nie usuwaj kolumn **„ID”** i **„Klip / TC”**. Odeślij plik montażyście.
+
+### Zwrotka (dla montażysty)
+
+Wrzuć odesłany DOCX do czatu (albo wskaż plik na dysku) i napisz „złóż z tego timeline”. Claude pokaże wybór z czasami, przetłumaczy uwagi i skreślenia na cięcia, uwagi niewykonalne cięciem („tu muzyka”) wypisze jako zadania, a po akceptacji zbuduje nowy timeline pod nazwą, którą podasz. Odtworzenie opiera się na kolumnie „Klip / TC”, więc działa nawet po usunięciu markerów.
+
+### Przykład
+
+> Zrób katalog wypowiedzi z binu Wywiady dla reżysera. Film ma mieć ok. 2 min. Brief w załączniku.
 
 ---
 
@@ -88,6 +115,7 @@ Jeśli komputer z Resolve nie ma dostępu do sieci, skopiuj plik biblioteki z wy
 
 | Skill | Plik w ZIP | Gdzie skopiować |
 |---|---|---|
+| fzp-katalog-wypowiedzi | `scripts/katalog_lib.py` | `~/.fzp-katalog-wypowiedzi/katalog_lib_1.0.py` |
 | fzp-szybka-narracja | `scripts/narracja_lib.py` | `~/.fzp-szybka-narracja/narracja_lib_1.0.py` |
 | fzp-napisy-z-timeline | `scripts/napisy_lib.py` | `~/.napisy-z-timeline/napisy_lib_3.1.1.py` |
 

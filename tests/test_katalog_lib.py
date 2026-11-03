@@ -50,6 +50,7 @@ def env(K, tmp_path):
     c2 = MClip("u2", "B_wywiad_firma.mov", "/m/b.mov", fps=50, start_tc="01:00:00:00", tr=tr2)
     c1.markers[5] = dict(color="Red", name="moj marker", note="", duration=1, customData="")  # cudzy marker zostaje
     c2.md = {"Description": "Opis montazysty", "Keywords": "wazne"}
+    c1.md = {"Description": "Bwf"}  # smiec z rejestratora - do nadpisania
     wyw = AFolder("Wywiady", [c1, c2])
     p = FakeProject(FakeFolder("Master", [], [wyw]))
     w = str(tmp_path / "w")
@@ -158,6 +159,7 @@ def test_roundtrip_selection(K, env):
     assert q3["clip"] == "A_wywiad_prezes.mov" and q3["tc_in"] < q3["tc_out"]
     assert sel["items"][3]["notes"] == "tylko pierwsze zdanie"
     assert sel["items"][2]["clip"] == "B_wywiad_firma.mov" and sel["items"][2]["tc_in"].startswith("01:")
+    assert sel["items"][2]["who"] == "Anna Nowak"  # aneks tez ma kolumne Kto
 
 
 def test_build_from_docx_items(K, env):

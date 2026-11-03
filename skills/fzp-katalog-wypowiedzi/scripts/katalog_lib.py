@@ -7,6 +7,8 @@ import json, os, re, sys, time
 LIB_VERSION = "1.0"
 MARKER_TAG = "fzp-katalog"
 MARKER_COLOR = "Cyan"
+# opisy wpisywane automatycznie przez rejestratory/kamery - traktowane jak puste pole
+PLACEHOLDER_DESC = {"", "bwf", "description", "none", "-"}
 MIN_RESOLVE = (21, 1)
 TC_DF = False
 # AppendToTimeline: endFrame wylaczny (sprawdzone w Resolve 21.1). Weryfikowane po kazdym dodaniu w build_timeline().
@@ -622,7 +624,7 @@ def apply_catalog(project, w, cat, docx_path=None, write_metadata=True, write_ma
             desc = " – ".join(x for x in (p.get("name"), p.get("role")) if x)
             if p.get("summary"):
                 desc += ". " + p["summary"]
-            if not (md.get("Description") or "").strip():
+            if (md.get("Description") or "").strip().lower() in PLACEHOLDER_DESC:
                 upd["Description"] = desc
                 rep["metadata_set"].append(c["name"])
             else:
@@ -837,7 +839,7 @@ def write_catalog_docx(path, cat, quotes, cl, units, people):
     # aneks: pelny zapis per klip
     blocks.append(("h1", "Aneks – pełny zapis wypowiedzi"))
     blocks.append(("note", "Każde zdanie ma ID i można je wybrać tak samo jak cytaty powyżej."))
-    widths2 = [700, 900, 2150, 700, 9450, 1500]
+    widths2 = [700, 900, 1500, 2150, 700, 8000, 1450]
     for cid in sorted(cl):
         keys = sorted([k for k in units if units[k]["clip"] == cid], key=_unit_key)
         if not keys:
@@ -846,10 +848,10 @@ def write_catalog_docx(path, cat, quotes, cl, units, people):
         rows = []
         for k in keys:
             ws = units[k]["words"]
-            rows.append(["", k, "%s\n%s–%s" % (c["name"], _src_tc(c, ws[0]["s"]), _src_tc(c, ws[-1]["e"])),
+            rows.append(["", k, who(cid), "%s\n%s–%s" % (c["name"], _src_tc(c, ws[0]["s"]), _src_tc(c, ws[-1]["e"])),
                          fmt_s((ws[-1]["e"] - ws[0]["s"]) / c["fps"]), " ".join(x["t"] for x in ws), ""])
         blocks.append(("h2", "%s – %s" % (who(cid), c["name"])))
-        blocks.append(("table", [COL_ORDER, COL_ID, COL_CLIP, COL_DUR, COL_TEXT, COL_NOTES], rows, widths2, (0,)))
+        blocks.append(("table", [COL_ORDER, COL_ID, COL_WHO, COL_CLIP, COL_DUR, COL_TEXT, COL_NOTES], rows, widths2, (0,)))
     return write_docx(path, blocks, cat.get("title") or "Katalog wypowiedzi")
 
 

@@ -2,6 +2,16 @@
 
 Format tagów: `<prefiks>-v<wersja>`, np. `napisy-v3.1` albo `narracja-v1.0` (prefiksy w `tools/release.json`). Sekcja o nazwie tagu trafia do opisu wydania na GitHubie.
 
+## katalog-v1.0
+
+Pierwsze wydanie skilla **fzp-katalog-wypowiedzi**: katalog wypowiedzi dla reżysera i zwrotka z wypełnionego dokumentu.
+
+- Katalog: osoby i tematy w metadanych (`Keywords` dopisywane, `Description` tylko w pustym polu albo zamiast automatycznego „Bwf”), markery z ID na klipach źródłowych (ponowne uruchomienie wymienia tylko własne markery), opcjonalnie IntelliSearch z twarzami.
+- Dokument DOCX generowany na komputerze z Resolve bez dodatkowych bibliotek: przegląd, cytaty pogrupowane po tematach, aneks z pełnym zapisem; kolumna „Kol.” do wpisywania kolejności.
+- Zwrotka: odczyt kolejności, uwag i skreśleń (także śledzenia zmian) z odesłanego DOCX, podgląd z czasami, nowy timeline z zakresów „Klip / TC” z zapasami i markerami sekcji.
+
+Przetestowane w Resolve 21.1.2 na 4 subclipach jednego nagrania: 16 cytatów i markerów, zwrotka z 6 wybranych pozycji (w tym 2 z aneksu, skreślenie i uwaga „tylko pierwsze zdanie”) → 5 fragmentów, 31,2 s, bez dziur.
+
 ## narracja-v1.0
 
 Pierwsze wydanie skilla **fzp-szybka-narracja**: gotowa narracja z wypowiedzi (A-roll) według briefu.

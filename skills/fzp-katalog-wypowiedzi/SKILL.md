@@ -30,7 +30,7 @@ Uruchom przez `run_script_unsafe` poniższy skrypt **dokładnie w tej postaci**.
 ```python
 import os, hashlib, subprocess, urllib.request
 VER = "1.0"
-SHA = "4af5faf8c97c6f64bff5f118d25e043555d0d69809c2a12862dd40c14bb10992"
+SHA = "62f821f169de01e073fd1296d4e0399c9b728d4e00008b0308bdce093fa67aca"
 URL = "https://raw.githubusercontent.com/filmowaniezprofitem/fzp_mcp_skills/katalog-v1.0/skills/fzp-katalog-wypowiedzi/scripts/katalog_lib.py"
 D = os.path.join(os.path.expanduser("~"), ".fzp-katalog-wypowiedzi")
 P = os.path.join(D, "katalog_lib_%s.py" % VER)
