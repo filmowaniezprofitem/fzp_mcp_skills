@@ -5,7 +5,7 @@ Zestaw skilli do pracy z MCP DaVinci Resolve z użyciem Claude. Przygotowane prz
 | Skill | Co robi | Wersja | Tag wydania |
 |---|---|---|---|
 | [fzp-katalog-wypowiedzi](skills/fzp-katalog-wypowiedzi/SKILL.md) | Katalog wypowiedzi dla reżysera, producenta albo klienta: metadane osób i tematów, markery z ID na cytatach, dokument DOCX do pracy offline; z odesłanego dokumentu nowy timeline w wybranej kolejności | 1.0 | `katalog-v…` |
-| [fzp-szybka-narracja](skills/fzp-szybka-narracja/SKILL.md) | Gotowa narracja z wypowiedzi według briefu: transkrypcja binu, propozycja tekstowa z czasami i brakami, po akceptacji nowy timeline cięty na granicach słów | 1.0 | `narracja-v…` |
+| [fzp-szybka-narracja](skills/fzp-szybka-narracja/SKILL.md) | Gotowa narracja z wypowiedzi według briefu: transkrypcja timeline'u albo binu, podział na wątki, propozycja tekstowa z czasami i brakami, po akceptacji nowy timeline cięty na granicach słów | 1.1 | `narracja-v…` |
 | [fzp-napisy-z-timeline](skills/fzp-napisy-z-timeline/SKILL.md) | Polskie napisy SRT z dialogów bieżącego timeline'u: transkrypcja w Resolve, czasy z pojedynczych słów, polskie zasady łamania wierszy, korekty do akceptacji, wstawienie po timecodzie | 3.1.1 | `napisy-v…` |
 
 ## Wymagania (wszystkie skille)
@@ -53,7 +53,7 @@ Wrzuć odesłany DOCX do czatu (albo wskaż plik na dysku) i napisz „złóż z
 
 ## fzp-szybka-narracja
 
-Składa film z samych wypowiedzi (A-roll) według briefu. Claude czyta brief, dopytuje tylko o to, czego brakuje (bin z wywiadami, długość, cel), transkrybuje bin, a potem pokazuje narrację tekstowo: sekcje, cytaty z mówcą, klipem, timecode'em i czasem trwania, sumę oraz braki względem briefu. Timeline powstaje dopiero po twojej akceptacji, zawsze jako nowy, pod nazwą, którą podasz.
+Składa film z samych wypowiedzi (A-roll) według briefu. Claude czyta brief, pyta o język wypowiedzi (domyślnie polski) i o to, czego brakuje (timeline albo bin z wywiadami, długość, cel), transkrybuje materiał i dzieli go na wątki w kolejności z timeline'u albo według daty nagrania. Ty decydujesz o strukturze, a Claude pokazuje narrację tekstowo (zarys albo pełną treść): sekcje, cytaty z mówcą, klipem, timecode'em i czasem trwania, sumę oraz braki względem briefu. Timeline powstaje dopiero po twojej akceptacji, zawsze jako nowy, pod nazwą, którą podasz.
 
 ### Użycie
 
@@ -61,10 +61,13 @@ Otwórz projekt z wywiadami i napisz do Claude, np.:
 
 > Ułóż narrację z binu Wywiady, 60–90 s, relacja z konferencji dla organizatora. Brief w załączniku.
 
-- Cięcia są na granicach słów, z zapasami na oddech (0,3 s przed, 0,4 s po), które nie wchodzą na sąsiednie słowa. Na początku każdej sekcji stoi marker.
+> Z timeline'u EDIT 01 pokaż wątki. Film 4–7 min, o kolejności zdecyduję sam.
+
+- Cięcia są na granicach słów, z zapasami na oddech (0,3 s przed, 0,4 s po), które nie wchodzą na sąsiednie słowa. Timeline nie dostaje markerów.
 - Poprawki („skróć do 60 s”, „zamień drugą wypowiedź prezesa”) Claude wprowadza w planie, pokazuje nową wersję tekstową i po akceptacji buduje **nowy** timeline (e02, e03…). Poprzednich wersji nie rusza.
 - Transkrypcja zostaje zapisana w projekcie Resolve, więc kolejne narracje z tego samego materiału startują od razu.
-- Subclipy z jednego pliku (np. kilka osób w jednym nagraniu z rejestratora) są obsługiwane: plik jest transkrybowany raz, a każdy subclip dostaje swój fragment według In/Out.
+- Subclipy są obsługiwane: każdy subclip ma własną transkrypcję swojego zakresu, a fragmenty są wstawiane z właściwego miejsca pliku.
+- Polski w Resolve 21.1 jest dostępny tylko w rozszerzonej liście języków (*experimental languages*). Skill włącza ją na czas transkrypcji i przywraca ustawienie po zakończeniu. Transkrypcje w złym języku (np. polski rozpoznany jako angielski) robi od nowa.
 
 Przebitkami skill się nie zajmuje. Do ich szukania służy IntelliSearch w Resolve.
 
@@ -116,7 +119,7 @@ Jeśli komputer z Resolve nie ma dostępu do sieci, skopiuj plik biblioteki z wy
 | Skill | Plik w ZIP | Gdzie skopiować |
 |---|---|---|
 | fzp-katalog-wypowiedzi | `scripts/katalog_lib.py` | `~/.fzp-katalog-wypowiedzi/katalog_lib_1.0.py` |
-| fzp-szybka-narracja | `scripts/narracja_lib.py` | `~/.fzp-szybka-narracja/narracja_lib_1.0.py` |
+| fzp-szybka-narracja | `scripts/narracja_lib.py` | `~/.fzp-szybka-narracja/narracja_lib_1.1.py` |
 | fzp-napisy-z-timeline | `scripts/napisy_lib.py` | `~/.napisy-z-timeline/napisy_lib_3.1.1.py` |
 
 Na Windows `~` to `C:\Users\<nazwa>`.

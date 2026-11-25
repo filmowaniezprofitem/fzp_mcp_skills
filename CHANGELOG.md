@@ -2,6 +2,17 @@
 
 Format tagów: `<prefiks>-v<wersja>`, np. `napisy-v3.1` albo `narracja-v1.0` (prefiksy w `tools/release.json`). Sekcja o nazwie tagu trafia do opisu wydania na GitHubie.
 
+## narracja-v1.1
+
+Poprawki po pierwszym użyciu na materiale produkcyjnym (relacja z rajdu, 8 subclipów z dwóch nagrań, ok. 15 min wypowiedzi) i nowy przebieg pracy.
+
+- **Stopklatki na subclipach (błąd 1.0):** `build_timeline` podawał `AppendToTimeline` klatki liczone od początku subclipu, a Resolve 21.1 liczy je od początku pliku. Fragmenty spod In subclipu były dociskane do In i stawały się stopklatkami o poprawnej długości. Teraz przesunięcie jest brane z timeline'u źródłowego albo kalibrowane próbnym wstawieniem, a po każdym wstawieniu sprawdzany jest zakres źródła (ostrzeżenie „stopklatka?”).
+- **Język transkrypcji:** polski da się ustawić tylko po włączeniu `transcriptionExtendedLanguageSupport` (experimental languages); w 1.0 `SetSetting` po cichu zawodził i zostawało `auto`, które rozpoznawało polski jako angielski. Biblioteka włącza obsługę języków rozszerzonych, sprawdza, czy język się przyjął, a transkrypcje w innym języku czyści i robi od nowa. `restore` przywraca oba ustawienia.
+- **Subclipy:** Resolve 21.1.2 transkrybuje tylko zakres subclipu, więc każdy klip jest transkrybowany osobno (w 1.0 plik współdzielony był transkrybowany raz i pozostałe subclipy zostawały bez tekstu).
+- **Materiał z timeline'u:** nowe `inventory_timeline()` bierze wypowiedzi z timeline'u w kolejności na osi czasu, z zakresem użytym na timeline'ie. `inventory()` z binu sortuje domyślnie po dacie nagrania (`order="date"`, też `tc`, `name`). Krok 0 zwraca listę timeline'ów.
+- **Nowy przebieg w SKILL.md:** pytanie o język (domyślnie polski) → transkrypcja → pytanie o pełną transkrypcję → wątki w kolejności materiału → narracja jako zarys albo pełna treść → poprawki → timeline.
+- **Bez markerów:** `build_timeline` domyślnie nie stawia markerów sekcji (`markers=True`, żeby je przywrócić).
+
 ## katalog-v1.0
 
 Pierwsze wydanie skilla **fzp-katalog-wypowiedzi**: katalog wypowiedzi dla reżysera i zwrotka z wypełnionego dokumentu.

@@ -16,10 +16,10 @@
       "lib": "scripts/narracja_lib.py",
       "tag_prefix": "narracja-v",
       "install_dir": ".fzp-szybka-narracja",
-      "post_comment": "od razu srodowisko, biny i folder roboczy (Krok 0b)",
+      "post_comment": "od razu srodowisko, biny, timeline'y i folder roboczy (Krok 0b)",
       "post": [
         "print(json.dumps(dict(env=check_env(resolve), project=project.GetName(), bins=list_bins(project),",
-        "                      W=new_workdir(project)), ensure_ascii=False))"
+        "                      timelines=list_timelines(project), W=new_workdir(project)), ensure_ascii=False))"
       ]
     },
     "fzp-katalog-wypowiedzi": {
