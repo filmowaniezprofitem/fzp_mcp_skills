@@ -3,7 +3,7 @@
 # Licencja: MIT + Commons Clause (zob. LICENSE w repozytorium fzp_mcp_skills)
 import json, os, re, sys, time
 
-LIB_VERSION = "1.0"
+LIB_VERSION = "1.1"
 MIN_RESOLVE = (21, 1)
 TC_DF = False
 # AppendToTimeline: endFrame wylaczny (sprawdzone w Resolve 21.1). Weryfikowane po kazdym dodaniu w build_timeline().
@@ -159,8 +159,40 @@ def list_bins(project):
     return out
 
 
-def inventory(project, w, bin_path=None, recursive=False):
-    """Klipy z dzwiekiem we wskazanym binie (sciezka 'A/B' albo biezacy folder). Zapisuje clips.json, zwraca liste."""
+_DATE_FMTS = ("%a %b %d %H:%M:%S %Y", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M",
+              "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %I:%M:%S %p", "%Y:%m:%d %H:%M:%S")
+
+
+def _clip_date(c):
+    """Data nagrania pliku (Date Created z Media Poola) jako czas epoki albo None."""
+    for key in ("Date Created", "Date Recorded", "Shot Date"):
+        v = (c.GetClipProperty(key) or "").strip()
+        if not v:
+            continue
+        for f in _DATE_FMTS:
+            try:
+                return time.mktime(time.strptime(v, f))
+            except Exception:
+                pass
+    return None
+
+
+def _clip_info(i, c, mark_in=None, mark_out=None, **extra):
+    fps = exact_fps(c.GetClipProperty("FPS") or 25)
+    tr = c.GetTranscription() or {}
+    d = dict(id="C%02d" % i, uid=c.GetUniqueId(), name=c.GetName(), fps=fps,
+             start_tc=c.GetClipProperty("Start TC") or "00:00:00:00",
+             frames=int(c.GetClipProperty("Frames") or 0), path=c.GetClipProperty("File Path") or "",
+             duration=c.GetClipProperty("Duration") or "", mark_in=mark_in, mark_out=mark_out,
+             date=c.GetClipProperty("Date Created") or "",
+             transcribed=bool(tr.get("segments")), transcription_lang=tr.get("language"))
+    d.update(extra)
+    return d
+
+
+def inventory(project, w, bin_path=None, recursive=False, order="date"):
+    """Klipy z dzwiekiem we wskazanym binie (sciezka 'A/B' albo biezacy folder). Zapisuje clips.json, zwraca liste.
+    order: "date" (data nagrania pliku, potem Start TC), "tc" (Start TC) albo "name". Kolejnosc wyznacza numery C01, C02..."""
     mp = project.GetMediaPool()
     folder = mp.GetCurrentFolder() if not bin_path else _folder_by_path(mp, [] if bin_path == "(Master)" else bin_path.split("/"))
     if folder is None:
@@ -169,49 +201,104 @@ def inventory(project, w, bin_path=None, recursive=False):
     clips = []
     for f in src:
         clips += [c for c in (f.GetClipList() or []) if _has_audio(c)]
-    clips.sort(key=lambda c: c.GetName())
+    def tc_key(c):
+        return tc2f(c.GetClipProperty("Start TC") or "00:00:00:00", exact_fps(c.GetClipProperty("FPS") or 25))
+    if order == "name":
+        clips.sort(key=lambda c: c.GetName())
+    elif order == "tc":
+        clips.sort(key=lambda c: (tc_key(c), c.GetName()))
+    else:  # data nagrania; bez daty -> na koniec, po Start TC
+        clips.sort(key=lambda c: (_clip_date(c) is None, _clip_date(c) or 0, tc_key(c), c.GetName()))
     out = []
     for i, c in enumerate(clips, 1):
-        fps = exact_fps(c.GetClipProperty("FPS") or 25)
         marks = {}
         try:
             marks = (c.GetMarkInOut() or {}).get("audio") or (c.GetMarkInOut() or {}).get("video") or {}
         except Exception:
             pass
-        out.append(dict(id="C%02d" % i, uid=c.GetUniqueId(), name=c.GetName(), fps=fps,
-                        start_tc=c.GetClipProperty("Start TC") or "00:00:00:00",
-                        frames=int(c.GetClipProperty("Frames") or 0), path=c.GetClipProperty("File Path") or "",
-                        duration=c.GetClipProperty("Duration") or "", mark_in=marks.get("in"), mark_out=marks.get("out"),
-                        transcribed=bool(((c.GetTranscription() or {}).get("segments")))))
-    _dump(w, "clips.json", dict(bin=bin_path or "(biezacy)", clips=out,
+        out.append(_clip_info(i, c, marks.get("in"), marks.get("out")))
+    _dump(w, "clips.json", dict(source="bin", bin=bin_path or "(biezacy)", order=order, clips=out,
                                 tl_fps=float(project.GetSetting("timelineFrameRate") or 25)))
     return out
 
 
+def list_timelines(project):
+    cur = project.GetCurrentTimeline()
+    return [dict(name=t.GetName(), current=bool(cur) and t.GetUniqueId() == cur.GetUniqueId())
+            for t in (project.GetTimelineByIndex(i) for i in range(1, project.GetTimelineCount() + 1))]
+
+
+def inventory_timeline(project, w, timeline_name=None):
+    """Wypowiedzi z timeline'u w kolejnosci na osi czasu (domyslnie biezacy timeline). Kazdy klip na timeline'ie
+    = osobne C01, C02... z zakresem uzytym na timeline'ie. Zapisuje clips.json, zwraca liste."""
+    tl = project.GetCurrentTimeline()
+    if timeline_name:
+        tl = next((project.GetTimelineByIndex(i) for i in range(1, project.GetTimelineCount() + 1)
+                   if project.GetTimelineByIndex(i).GetName() == timeline_name), None)
+    if tl is None:
+        raise RuntimeError("Nie ma timeline'u: %s" % timeline_name)
+    tfps = exact_fps(tl.GetSetting("timelineFrameRate") or 25)
+    items = []
+    for kind in ("video", "audio"):  # wideo wyznacza kolejnosc; same audio tylko, gdy nie ma wideo
+        for k in range(1, tl.GetTrackCount(kind) + 1):
+            for it in tl.GetItemListInTrack(kind, k) or []:
+                m = it.GetMediaPoolItem()
+                if m and _has_audio(m):
+                    items.append((it.GetStart(), k, it, m))
+        if items:
+            break
+    items.sort(key=lambda x: (x[0], x[1]))
+    out, seen = [], set()
+    for start, _, it, m in items:
+        key = (m.GetUniqueId(), it.GetLeftOffset(), it.GetDuration())
+        if key in seen:  # ten sam fragment na kilku sciezkach
+            continue
+        seen.add(key)
+        sfps = exact_fps(m.GetClipProperty("FPS") or 25)
+        lo = int(it.GetLeftOffset())
+        hi = lo + int(round(it.GetDuration() * sfps / tfps)) - 1
+        out.append(_clip_info(len(out) + 1, m, lo, hi, src_off=int(it.GetSourceStartFrame()) - lo,
+                              tl_tc=f2tc(start, tfps)))
+    _dump(w, "clips.json", dict(source="timeline", timeline=tl.GetName(), clips=out, tl_fps=float(tfps)))
+    return out
+
+
 # ---------------------------------------------------------------- transkrypcja
-def _transcription(project, info):
-    """Transkrypcja klipu albo innego klipu z tego samego pliku (subclipy dziela plik, a Resolve i tak
-    transkrybuje caly plik, ignorujac In/Out)."""
+def _transcription(project, info, lang=None):
+    """Transkrypcja klipu (subclip ma wlasna, w zakresie swojego In/Out). Z lang: tylko w tym jezyku."""
     c = clip_by_uid(project, info["uid"])
     tr = c.GetTranscription() if c else None
-    if tr and tr.get("segments"):
-        return tr
-    for o in _all_clips(project.GetMediaPool()):
-        if info["path"] and o.GetClipProperty("File Path") == info["path"]:
-            t = o.GetTranscription()
-            if t and t.get("segments"):
-                return t
-    return None
+    if not (tr and tr.get("segments")):
+        return None
+    if lang and tr.get("language") and tr.get("language") != lang:
+        return None
+    return tr
+
+
+def set_transcription_language(project, lang):
+    """Ustawia jezyk transkrypcji. Czesc jezykow (m.in. polski) dziala tylko z wlaczonym
+    transcriptionExtendedLanguageSupport. Zwraca True, gdy ustawienie sie przyjelo."""
+    if project.GetSetting("transcriptionLanguage") == lang:
+        return True
+    project.SetSetting("transcriptionLanguage", lang)
+    if project.GetSetting("transcriptionLanguage") == lang:
+        return True
+    project.SetSetting("transcriptionExtendedLanguageSupport", "1")
+    project.SetSetting("transcriptionLanguage", lang)
+    return project.GetSetting("transcriptionLanguage") == lang
 
 
 def transcribe_step(resolve, project, w, lang="pl", wait_s=50, poll_s=5):
-    """Transkrybuje po kolei klipy bez transkrypcji (jeden plik = jedna transkrypcja). Wywoluj w petli, az zwroci
-    status 'gotowe'. Czeka do wait_s w jednym wywolaniu."""
+    """Transkrybuje po kolei klipy bez transkrypcji w jezyku lang (transkrypcje w innym jezyku czysci i robi od nowa).
+    Kazdy klip osobno (subclip = jego zakres). Wywoluj w petli, az zwroci status 'gotowe'. Czeka do wait_s."""
     meta = _load(w, "clips.json")
     st_path = os.path.join(w, "transcribe.json")
-    st = _load(w, "transcribe.json") if os.path.exists(st_path) else dict(lang_before=project.GetSetting("transcriptionLanguage"), started=[])
-    if project.GetSetting("transcriptionLanguage") != lang:
-        project.SetSetting("transcriptionLanguage", lang)
+    st = _load(w, "transcribe.json") if os.path.exists(st_path) else dict(
+        lang=lang, lang_before=project.GetSetting("transcriptionLanguage"),
+        ext_before=project.GetSetting("transcriptionExtendedLanguageSupport"), started=[])
+    _dump(w, "transcribe.json", st)
+    if not set_transcription_language(project, lang):
+        return dict(status="blad", error="Resolve nie przyjal jezyka transkrypcji '%s'" % lang)
     if resolve.GetCurrentPage() != "edit":
         st.setdefault("page_before", resolve.GetCurrentPage())
         resolve.OpenPage("edit")
@@ -220,34 +307,41 @@ def transcribe_step(resolve, project, w, lang="pl", wait_s=50, poll_s=5):
         js = project.GetTranscribeAudioStatus() or {}
         busy = js.get("JobStatus") in ("Initializing", "Analyzing", "Cancelling")
         if not busy:
-            started_paths = {c["path"] for c in meta["clips"] if c["uid"] in st["started"]}
-            todo = [c for c in meta["clips"] if c["uid"] not in st["started"] and c["path"] not in started_paths
-                    and not _transcription(project, c)]
+            todo, uids = [], set()
+            for c in meta["clips"]:  # ten sam klip kilka razy na timeline'ie -> jedna transkrypcja
+                if c["uid"] in st["started"] or c["uid"] in uids or _transcription(project, c, lang):
+                    continue
+                uids.add(c["uid"])
+                todo.append(c)
             if not todo:
-                missing = [c["id"] for c in meta["clips"] if not _transcription(project, c)]
+                missing = [c["id"] for c in meta["clips"] if not _transcription(project, c, lang)]
                 _dump(w, "transcribe.json", st)
                 return dict(status="gotowe" if not missing else "bledy", missing=missing, error=js.get("Error"))
             c = clip_by_uid(project, todo[0]["uid"])
+            if (c.GetTranscription() or {}).get("segments"):
+                c.ClearTranscription()  # transkrypcja w innym jezyku
             ok = c.TranscribeAudio(True, False)
             st["started"].append(todo[0]["uid"])
             _dump(w, "transcribe.json", st)
             if not ok:
                 return dict(status="blad", clip=todo[0]["id"], error="TranscribeAudio zwrocilo False")
         if time.time() - t0 >= wait_s:
-            done = sum(1 for c in meta["clips"] if _transcription(project, c))
+            done = sum(1 for c in meta["clips"] if _transcription(project, c, lang))
             return dict(status="w toku", done=done, total=len(meta["clips"]),
                         percent=js.get("CompletionPercentage"), eta_s=js.get("EstimatedTimeRemaining"))
         time.sleep(poll_s)
 
 
 def restore(resolve, project, w):
-    """Przywraca jezyk transkrypcji i strone sprzed skilla."""
+    """Przywraca jezyk transkrypcji (z obsluga jezykow rozszerzonych) i strone sprzed skilla."""
     p = os.path.join(w, "transcribe.json")
     if not os.path.exists(p):
         return []
     st = _load(w, "transcribe.json")
     if st.get("lang_before") is not None:
         project.SetSetting("transcriptionLanguage", st["lang_before"])
+    if st.get("ext_before") is not None:
+        project.SetSetting("transcriptionExtendedLanguageSupport", st["ext_before"])
     if st.get("page_before"):
         resolve.OpenPage(st["page_before"])
     return ["przywrocono jezyk transkrypcji i strone"]
@@ -276,9 +370,10 @@ def export_units(project, w, pause_s=1.5, max_s=20.0):
     """Z transkrypcji tworzy jednostki = zdania (dzielone tez przy zmianie mowcy i pauzie > pause_s).
     Zapisuje units.json. Zwraca liczbe jednostek na klip."""
     meta = _load(w, "clips.json")
+    lang = _load(w, "transcribe.json").get("lang") if os.path.exists(os.path.join(w, "transcribe.json")) else None
     units, counts = {}, {}
     for c in meta["clips"]:
-        tr = _transcription(project, c)
+        tr = _transcription(project, c, lang)
         if not tr:
             counts[c["id"]] = 0
             continue
@@ -406,7 +501,7 @@ def resolve_plan(w, plan, pre_s=0.3, post_s=0.4):
             hi = (c["mark_out"] + 1) if c.get("mark_out") is not None else (c["frames"] or 10 ** 9)
             s = max(lo, min(sel[0]["s"], max(prev_e, sel[0]["s"] - int(round(pre_s * fps)))))
             e = min(hi, max(sel[-1]["e"], min(next_s, sel[-1]["e"] + int(round(post_s * fps)))))
-            segs.append(dict(clip=cid, uid=c["uid"], name=c["name"], fps=fps, s=s, e=e, ws=sel[0]["s"], we=sel[-1]["e"], i0=i0, i1=i1,
+            segs.append(dict(clip=cid, uid=c["uid"], name=c["name"], fps=fps, s=s, e=e, src_off=c.get("src_off"), ws=sel[0]["s"], we=sel[-1]["e"], i0=i0, i1=i1,
                              sp=sel[0]["sp"], text=" ".join(x["t"] for x in sel),
                              tc=f2tc(tc2f(c["start_tc"], fps) + sel[0]["s"], fps)))
         # kolejne fragmenty tego samego klipu bez slow pomiedzy (albo nachodzace) -> jeden ciagly segment:
@@ -452,7 +547,19 @@ def timeline_exists(project, name):
     return False
 
 
-def build_timeline(project, w, name, plan=None, pre_s=0.3, post_s=0.4, gap_s=0.0, markers=True):
+def _src_offset(tl, mp, item, rec):
+    """Klatka zrodla, od ktorej AppendToTimeline liczy startFrame dla tego klipu. Dla subclipu to jego In w pliku,
+    a nie 0 (Resolve 21.1: klatki ponizej In sa dociskane do In i fragment staje sie stopklatka). Kalibracja:
+    probne wstawienie od klatki 0 i odczyt GetSourceStartFrame(), potem usuniecie."""
+    got = mp.AppendToTimeline([dict(mediaPoolItem=item, startFrame=0, endFrame=1, recordFrame=rec)]) or []
+    if not got:
+        return 0
+    off = int(got[0].GetSourceStartFrame() or 0)
+    tl.DeleteClips(got, False)
+    return off
+
+
+def build_timeline(project, w, name, plan=None, pre_s=0.3, post_s=0.4, gap_s=0.0, markers=False):
     """Buduje NOWY timeline z planu (domyslnie zapisany plan.json). Nigdy nie zmienia istniejacych timeline'ow.
     Zwraca raport: liczba klipow, dlugosc, kontrola dziur i nakladek."""
     plan = plan or _load(w, "plan.json")
@@ -472,15 +579,18 @@ def build_timeline(project, w, name, plan=None, pre_s=0.3, post_s=0.4, gap_s=0.0
     tfps = exact_fps(tl.GetSetting("timelineFrameRate") or project.GetSetting("timelineFrameRate") or 25)
     gap_f = int(round(gap_s * tfps))
     rec = tl.GetStartFrame()
-    placed, warn = [], []
+    placed, warn, offs = [], [], {}
     for si, sec in enumerate(sections):
         if si and gap_f:
             rec += gap_f
         sec_start = rec
         for g in sec["segs"]:
             item = clip_by_uid(project, g["uid"])
-            info = dict(mediaPoolItem=item, startFrame=g["s"], endFrame=g["e"] if END_EXCLUSIVE else g["e"] - 1,
-                        recordFrame=rec)
+            if g["uid"] not in offs:
+                offs[g["uid"]] = g["src_off"] if g.get("src_off") is not None else _src_offset(tl, mp, item, rec)
+            off = offs[g["uid"]]
+            info = dict(mediaPoolItem=item, startFrame=off + g["s"],
+                        endFrame=off + (g["e"] if END_EXCLUSIVE else g["e"] - 1), recordFrame=rec)
             got = mp.AppendToTimeline([info]) or []
             if not got:
                 warn.append("nie dodano %s %s" % (g["clip"], g["tc"]))
@@ -492,6 +602,9 @@ def build_timeline(project, w, name, plan=None, pre_s=0.3, post_s=0.4, gap_s=0.0
                 warn.append("%s %s: dlugosc %d kl., oczekiwano %d" % (g["clip"], g["tc"], en - st, exp))
             if st != rec:
                 warn.append("%s %s: start %d zamiast %d" % (g["clip"], g["tc"], st, rec))
+            src = [x for x in got if x.GetSourceEndFrame() is not None]
+            if src and min(int(x.GetSourceEndFrame()) - int(x.GetSourceStartFrame()) for x in src) < (g["e"] - g["s"]) // 2:
+                warn.append("%s %s: zakres zrodla za krotki (stopklatka?)" % (g["clip"], g["tc"]))
             placed.append(dict(st=st, en=en, sec=si))
             rec = en  # nastepny od faktycznego konca (unika 1-klatkowych dziur przy roznym FPS)
         if markers and sec["segs"]:
